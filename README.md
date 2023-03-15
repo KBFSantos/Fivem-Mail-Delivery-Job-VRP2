@@ -10,7 +10,7 @@ There's not much difficulty to convert to old vrp or "vrpex", You can read the [
 * ✅ Storage System: The delivery vans only carry a limited amount of mail, So it's necessary to go back to the central office to refill the van.
 * ✅ Uniform System: To start the job the player needs to wear the uniform with an already defined set that currently uses the standard clothes, and automatically recognizes the character's gender.
 * ✅ Garage system: The script has its own garage system without needing any additional dependencies for vehicles.
-* ✅ Secure Communication: The script uses vrp tunnel communication with the server in essential functions to prevent hacker exploitation using triggers, This can prevent money hacks for example.
+* ✅ Safe Communication: The script uses vrp tunnel for server communications in essential functions to prevent hacker exploitation using triggers, This can prevent money hacks for example.
 
 ## Dependencies
 
