@@ -5,42 +5,42 @@ local cvRP = module("vrp", "client/vRP")
 vRP = cvRP() 
 
 local vrp_postal = class("vrp_postal", vRP.Extension)
-local Centrais = {
-	{coords=vector3(-422.09115600586,6135.763671875,31.877313613892),heading=163.98,garage={-432.11645507812,6134.484375,31.377746582031,224.65},van="boxville4",pmodel="s_m_m_ups_02",estoque=vector3(-437.85546875,6147.8676757812,31.478212356567)},
-	{coords=vector3(78.497062683105,111.82454681396,81.168190002441),heading=251.33,garage={73.214248657227,123.23969268799,79.099815368652,338.89},van="boxville2",pmodel="s_m_m_postal_02",estoque=vector3(113.33866882324,103.77201843262,81.169395446777)}
+local Offices = {
+	{coords=vector3(-422.09115600586,6135.763671875,31.877313613892),heading=163.98,garage={-432.11645507812,6134.484375,31.377746582031,224.65},van="boxville4",pmodel="s_m_m_ups_02",stock=vector3(-437.85546875,6147.8676757812,31.478212356567)},
+	{coords=vector3(78.497062683105,111.82454681396,81.168190002441),heading=251.33,garage={73.214248657227,123.23969268799,79.099815368652,338.89},van="boxville2",pmodel="s_m_m_postal_02",stock=vector3(113.33866882324,103.77201843262,81.169395446777)}
 } 
-local trabalhando = false
-local selfVan = nil
-local emServico = false
-local centralAtual = nil
+local onDuty = false
+local workVan = nil
+local isWorking = false
+local currentOffice = nil
 local blip = nil
-local destinoantigo = nil
-local estoqueBlip = nil
+local lastDeliveryID = nil
+local officeBlip = nil
 local peds = {}
 
 local northMission = {
-	{coords=vector3(21.498975753784,6567.361328125,31.35368347168),estacionar=vector3(28.026630401611,6571.40234375,31.217586517334),type="carta",pay=14},
-	{coords=vector3(-36.889472961426,6632.8994140625,30.281930923462),estacionar=vector3(-47.752220153809,6616.171875,29.805145263672),type="pacote",pay=11},
-	{coords=vector3(1507.2479248047,6327.7724609375,24.016279220581),estacionar=vector3(1500.8770751953,6331.0830078125,23.910417556763),type="pacote",pay=30},
-	{coords=vector3(1827.2171630859,3891.9638671875,33.554592132568),estacionar=vector3(1836.5699462891,3891.0732421875,33.390758514404),type="carta",pay=30},
-	{coords=vector3(1639.9468994141,3731.7170410156,35.067142486572),estacionar=vector3(1646.3070068359,3734.3068847656,34.272079467773),type="pacote",pay=34},
-	{coords=vector3(1446.3842773438,3649.3793945312,34.489151000977),estacionar=vector3(1449.791015625,3656.7524414062,34.264308929443),type="carta",pay=30},
-	{coords=vector3(-1593.9378662109,5192.3764648438,4.3100881576538),estacionar=vector3(-1575.97265625,5170.0795898438,19.462814331055),type="pacote",pay=30},
-	{coords=vector3(1880.5743408203,3888.4079589844,33.02702331543),estacionar=vector3(1874.6241455078,3893.2490234375,32.90686416626),type="carta",pay=30},
+	{coords=vector3(21.498975753784,6567.361328125,31.35368347168),parkingSpot=vector3(28.026630401611,6571.40234375,31.217586517334),type="letter",pay=14},
+	{coords=vector3(-36.889472961426,6632.8994140625,30.281930923462),parkingSpot=vector3(-47.752220153809,6616.171875,29.805145263672),type="package",pay=11},
+	{coords=vector3(1507.2479248047,6327.7724609375,24.016279220581),parkingSpot=vector3(1500.8770751953,6331.0830078125,23.910417556763),type="package",pay=30},
+	{coords=vector3(1827.2171630859,3891.9638671875,33.554592132568),parkingSpot=vector3(1836.5699462891,3891.0732421875,33.390758514404),type="letter",pay=30},
+	{coords=vector3(1639.9468994141,3731.7170410156,35.067142486572),parkingSpot=vector3(1646.3070068359,3734.3068847656,34.272079467773),type="package",pay=34},
+	{coords=vector3(1446.3842773438,3649.3793945312,34.489151000977),parkingSpot=vector3(1449.791015625,3656.7524414062,34.264308929443),type="letter",pay=30},
+	{coords=vector3(-1593.9378662109,5192.3764648438,4.3100881576538),parkingSpot=vector3(-1575.97265625,5170.0795898438,19.462814331055),type="package",pay=30},
+	{coords=vector3(1880.5743408203,3888.4079589844,33.02702331543),parkingSpot=vector3(1874.6241455078,3893.2490234375,32.90686416626),type="letter",pay=30},
 }
 
 local southMission = {
-	{coords=vector3(-698.09790039062,45.763751983643,44.034057617188),estacionar=vector3(-688.47082519531,43.169586181641,43.108669281006),type="pacote",pay=14},
-	{coords=vector3(-574.10046386719,409.44281005859,100.512550354),estacionar=vector3(-582.18072509766,410.2883605957,100.55785369873),type="carta",pay=11},
-	{coords=vector3(-1599.0407714844,-365.93423461914,44.809772491455),estacionar=vector3(-1595.9165039062,-378.46875,43.953769683838),type="carta",pay=40},
-	{coords=vector3(-903.0673828125,191.5577545166,69.445983886719),estacionar=vector3(-928.87377929688,176.30931091309,66.324478149414),type="pacote",pay=14},
-	{coords=vector3(327.40805053711,503.58285522461,152.10403442383),estacionar=vector3(329.77478027344,496.53897094727,151.64530944824),type="carta",pay=40},
-	{coords=vector3(248.44808959961,-1729.2562255859,29.331663131714),estacionar=vector3(241.13723754883,-1720.3128662109,28.859605789185),type="pacote",pay=40},
-	{coords=vector3(430.96856689453,-1725.8013916016,29.601461410522),estacionar=vector3(416.43469238281,-1716.2891845703,29.059787750244),type="pacote",pay=40},
-	{coords=vector3(191.51940917969,-1884.6512451172,24.691139221191),estacionar=vector3(190.34574890137,-1898.2308349609,23.64271736145),type="pacote",pay=40},
+	{coords=vector3(-698.09790039062,45.763751983643,44.034057617188),parkingSpot=vector3(-688.47082519531,43.169586181641,43.108669281006),type="package",pay=14},
+	{coords=vector3(-574.10046386719,409.44281005859,100.512550354),parkingSpot=vector3(-582.18072509766,410.2883605957,100.55785369873),type="letter",pay=11},
+	{coords=vector3(-1599.0407714844,-365.93423461914,44.809772491455),parkingSpot=vector3(-1595.9165039062,-378.46875,43.953769683838),type="letter",pay=40},
+	{coords=vector3(-903.0673828125,191.5577545166,69.445983886719),parkingSpot=vector3(-928.87377929688,176.30931091309,66.324478149414),type="package",pay=14},
+	{coords=vector3(327.40805053711,503.58285522461,152.10403442383),parkingSpot=vector3(329.77478027344,496.53897094727,151.64530944824),type="letter",pay=40},
+	{coords=vector3(248.44808959961,-1729.2562255859,29.331663131714),parkingSpot=vector3(241.13723754883,-1720.3128662109,28.859605789185),type="package",pay=40},
+	{coords=vector3(430.96856689453,-1725.8013916016,29.601461410522),parkingSpot=vector3(416.43469238281,-1716.2891845703,29.059787750244),type="package",pay=40},
+	{coords=vector3(191.51940917969,-1884.6512451172,24.691139221191),parkingSpot=vector3(190.34574890137,-1898.2308349609,23.64271736145),type="package",pay=40},
 }
 
-local uniformes = {
+local uniforms = {
     ["male"] = {
         ["drawable:1"] = {0,0}, 
         ["drawable:8"] = {15,0},
@@ -65,7 +65,7 @@ local uniformes = {
 
 
 Citizen.CreateThread(function()
-    for k,v in pairs(Centrais) do
+    for k,v in pairs(Offices) do
 			RequestModel(GetHashKey(v.pmodel))
 	
 			while not HasModelLoaded(GetHashKey(v.pmodel)) do
@@ -85,13 +85,13 @@ Citizen.CreateThread(function()
 			}, {
 				options = {
 					{
-						event = "vrp_postal:trabalhar",
+						event = "vrp_postal:job",
 						icon = "fas fa-file-signature",
 						label = "Trabalhar",
-						central = k,
-						trabalho = true,
+						office = k,
+						job = true,
                         canInteract = function(entity)
-                            if not trabalhando then
+                            if not onDuty then
                                 return true
                             else
                                 return false
@@ -99,13 +99,13 @@ Citizen.CreateThread(function()
                         end,
 					},
 					{
-						event = "vrp_postal:trabalhar",
+						event = "vrp_postal:job",
 						icon = "fas fa-file-signature",
 						label = "Demitir-se",
-						trabalho = false,
-						central = k,
+						job = false,
+						office = k,
                         canInteract = function(entity)
-                            if trabalhando then
+                            if onDuty then
                                 return true
                             else
                                 return false
@@ -113,12 +113,12 @@ Citizen.CreateThread(function()
                         end,
 					},
 					{
-						event = "vrp_postal:service",
+						event = "vrp_postal:workMission",
 						icon = "fas fa-file-contract",
 						label = "Iniciar Serviço",
-						central = k,
+						office = k,
                         canInteract = function(entity)
-                            if trabalhando and not emServico then
+                            if onDuty and not isWorking then
                                 return true
                             else
                                 return false
@@ -129,9 +129,9 @@ Citizen.CreateThread(function()
 						event = "vrp_postal:ReceivePayment",
 						icon = "fas fa-file-invoice-dollar",
 						label = "Receber Pagamento",
-						central = k,
+						office = k,
                         canInteract = function(entity)
-                            if trabalhando then
+                            if onDuty then
                                 return true
                             else
                                 return false
@@ -142,9 +142,9 @@ Citizen.CreateThread(function()
 						event = "vrp_postal:spawnvan",
 						icon = "fas fa-shuttle-van",
 						label = "Retirar van",
-						central = k,
+						office = k,
                         canInteract = function(entity)
-                            if trabalhando and not selfVan then
+                            if onDuty and not workVan then
                                 return true
                             else
                                 return false
@@ -160,30 +160,30 @@ Citizen.CreateThread(function()
 
 	while true do 
         Citizen.Wait(5)
-        if selfVan and centralAtual then
-            if GetVehiclePedIsIn(PlayerPedId(),false) == selfVan then
-				local gx,gy,gz,gh = table.unpack(Centrais[centralAtual].garage)
+        if workVan and currentOffice then
+            if GetVehiclePedIsIn(PlayerPedId(),false) == workVan then
+				local gx,gy,gz,gh = table.unpack(Offices[currentOffice].garage)
                 local distance = GetDistanceBetweenCoords(GetEntityCoords(GetPlayerPed(-1)),gx,gy,gz)
                 if distance <= 3 then
                     DisplayHelpText("Pressione ~INPUT_PICKUP~ para guardar van")
                     if IsControlJustPressed(1,38) then
-                        SetVehicleHasBeenOwnedByPlayer(selfVan,false)
-                        SetEntityAsMissionEntity(selfVan, false, true)
-                        SetVehicleAsNoLongerNeeded(Citizen.PointerValueIntInitialized(selfVan))
+                        SetVehicleHasBeenOwnedByPlayer(workVan,false)
+                        SetEntityAsMissionEntity(workVan, false, true)
+                        SetVehicleAsNoLongerNeeded(Citizen.PointerValueIntInitialized(workVan))
                         DoScreenFadeOut(250)
                         while not IsScreenFadedOut() do
                         Citizen.Wait(10)
                         end
-                        DeleteVehicle(selfVan)
-                        selfVan = nil
+                        DeleteVehicle(workVan)
+                        workVan = nil
                         Citizen.Wait(150)
                         DoScreenFadeIn(250)
 
 
-						-- Cancela missão
+						-- Cancel mission
 						RemoveBlip(blip)
-						RemoveBlip(estoqueBlip)
-						emServico = false
+						RemoveBlip(officeBlip)
+						isWorking = false
                     end
                 end
             end
@@ -200,61 +200,61 @@ function vrp_postal:__construct()
 RegisterNetEvent("vrp_postal:ReceivePayment")
 AddEventHandler("vrp_postal:ReceivePayment",function(data)
 
-	if data.central ~= centralAtual then
+	if data.office ~= currentOffice then
 		TriggerEvent("Notify","aviso","Você não foi contratado por esta central")
 		return
 	end
 
-    self.remote.ReceberPagamento()
+    self.remote.ReceivePayout()
 end)
 
-RegisterNetEvent("vrp_postal:trabalhar")
-AddEventHandler("vrp_postal:trabalhar",function(data)
-    if data.trabalho and not trabalhando then
-        trabalhando = true
-		centralAtual = data.central
-		CriarEstoqueBlip(Centrais[centralAtual].estoque.x,Centrais[centralAtual].estoque.y,Centrais[centralAtual].estoque.z)
-        -- setar uniforme
+RegisterNetEvent("vrp_postal:job")
+AddEventHandler("vrp_postal:job",function(data)
+    if data.job and not onDuty then
+        onDuty = true
+		currentOffice = data.office
+		CreateOfficeBlip(Offices[currentOffice].stock.x,Offices[currentOffice].stock.y,Offices[currentOffice].stock.z)
+        -- wear uniform
         DoScreenFadeOut(250)
         while not IsScreenFadedOut() do
         Citizen.Wait(10)
         end
         if IsPedModel(PlayerPedId(), 'mp_m_freemode_01') then
-            TriggerServerEvent("vrp_postal:Uniforme",true,uniformes["male"])
+            TriggerServerEvent("vrp_postal:Uniform",true,uniforms["male"])
         else
-            TriggerServerEvent("vrp_postal:Uniforme",true,uniformes["female"])
+            TriggerServerEvent("vrp_postal:Uniform",true,uniforms["female"])
         end
         Citizen.Wait(150)
         DoScreenFadeIn(250)
         TriggerEvent("Notify","importante","Você foi contratado para trabalhar como <b>carteiro</b>")
-    elseif not data.trabalho and trabalhando then
+    elseif not data.job and onDuty then
 
-		if data.central ~= centralAtual then
+		if data.office ~= currentOffice then
 			TriggerEvent("Notify","aviso","Você não foi contratado por esta central")
 			return
 		end
 
-        trabalhando = false
-		centralAtual = nil
+        onDuty = false
+		currentOffice = nil
 		RemoveBlip(blip)
-		RemoveBlip(estoqueBlip)
-		emServico = false
+		RemoveBlip(officeBlip)
+		isWorking = false
 
-		-- Deleta Van
-		if selfVan then
-			SetVehicleHasBeenOwnedByPlayer(selfVan,false)
-			SetEntityAsMissionEntity(selfVan, false, true)
-			SetVehicleAsNoLongerNeeded(Citizen.PointerValueIntInitialized(selfVan))                                   
-			DeleteVehicle(selfVan)
-			selfVan = nil
+		-- Delete work Van
+		if workVan then
+			SetVehicleHasBeenOwnedByPlayer(workVan,false)
+			SetEntityAsMissionEntity(workVan, false, true)
+			SetVehicleAsNoLongerNeeded(Citizen.PointerValueIntInitialized(workVan))                                   
+			DeleteVehicle(workVan)
+			workVan = nil
 		end
 
-        -- retira uniforme
+        -- remove uniform
         DoScreenFadeOut(250)
         while not IsScreenFadedOut() do
         Citizen.Wait(10)
         end
-        TriggerServerEvent("vrp_postal:Uniforme",false)
+        TriggerServerEvent("vrp_postal:Uniform",false)
         Citizen.Wait(150)
         DoScreenFadeIn(250)
         TriggerEvent("Notify","importante","Você se demitiu do serviço")
@@ -264,62 +264,62 @@ end)
 
 
 
-RegisterNetEvent("vrp_postal:service")
-AddEventHandler("vrp_postal:service",function(data)
+RegisterNetEvent("vrp_postal:workMission")
+AddEventHandler("vrp_postal:workMission",function(data)
 
-	if data.central ~= centralAtual then
+	if data.office ~= currentOffice then
 		TriggerEvent("Notify","aviso","Você não foi contratado por esta central")
 		return
 	end
 
-	if not selfVan then
+	if not workVan then
 		TriggerEvent("Notify","aviso","Você precisa retirar sua van")
 		return
 	end
 
-    if trabalhando and not emServico then
-		emServico = true
+    if onDuty and not isWorking then
+		isWorking = true
 		local mission = nil
-		local caixas = 0
-		local maxCaixas = 10
-		local carregandoCaixa = false
-		local caixaProp = nil
+		local boxes = 0
+		local maxBoxes = 10
+		local carryingBox = false
+		local boxProp = nil
 		local ped = PlayerPedId()
-		local entregando = false
-		local pegarEncomenda = false
+		local delivering = false
+		local takeMail = false
 		
-		if centralAtual == 1 then
+		if currentOffice == 1 then
 			mission = northMission
-		elseif centralAtual == 2 then
+		elseif currentOffice == 2 then
 			mission = southMission
 		end
 
 		local MissionID = math.random(1,#mission)
-		destinoantigo = MissionID
-		CriarBlip(mission[MissionID].estacionar.x,mission[MissionID].estacionar.y,mission[MissionID].estacionar.z,"Entrega de Correspondencia")
+		lastDeliveryID = MissionID
+		CreateBlip(mission[MissionID].parkingSpot.x,mission[MissionID].parkingSpot.y,mission[MissionID].parkingSpot.z,"Entrega de Correspondencia")
 		TriggerEvent("Notify","importante","Serviço Iniciado, Pegue as Correspondencias do estoque e carregue na van")
-		while emServico and selfVan do
+		while isWorking and workVan do
 			Citizen.Wait(1)
 
 
-			if caixas <= maxCaixas then
-				DrawMarker(21, Centrais[centralAtual].estoque.x,Centrais[centralAtual].estoque.y,Centrais[centralAtual].estoque.z, 0, 0, 0, 180.0, 0, 0, 0.4, 0.4, 0.4, 207, 158, 25, 150, 0, 0, 0, 1)
+			if boxes <= maxBoxes then
+				DrawMarker(21, Offices[currentOffice].stock.x,Offices[currentOffice].stock.y,Offices[currentOffice].stock.z, 0, 0, 0, 180.0, 0, 0, 0.4, 0.4, 0.4, 207, 158, 25, 150, 0, 0, 0, 1)
 
-				local distance = GetDistanceBetweenCoords(GetEntityCoords(ped),Centrais[centralAtual].estoque.x,Centrais[centralAtual].estoque.y,Centrais[centralAtual].estoque.z,true)
+				local distance = GetDistanceBetweenCoords(GetEntityCoords(ped),Offices[currentOffice].stock.x,Offices[currentOffice].stock.y,Offices[currentOffice].stock.z,true)
                 if distance <= 2 then
 					DisplayHelpText("Pressione ~INPUT_PICKUP~ para pegar correspondencia")
 					if IsControlJustPressed(1,38) then
-						if caixas ~= maxCaixas then
-							carregandoCaixa = true
-							-- pegar caixa
+						if boxes ~= maxBoxes then
+							carryingBox = true
+							-- take box
 							local coords = GetOffsetFromEntityInWorldCoords(ped,0.0,0.0,-5.0)
-							caixaProp = CreateObject(GetHashKey("prop_cs_cardbox_01"),coords.x,coords.y,coords.z,true,true,true)
-							SetEntityCollision(caixaProp,false,false)
-							AttachEntityToEntity(caixaProp,ped,GetPedBoneIndex(ped,28422),nil,nil,nil,nil,nil,nil,true,true,false,true,1,true)
+							boxProp = CreateObject(GetHashKey("prop_cs_cardbox_01"),coords.x,coords.y,coords.z,true,true,true)
+							SetEntityCollision(boxProp,false,false)
+							AttachEntityToEntity(boxProp,ped,GetPedBoneIndex(ped,28422),nil,nil,nil,nil,nil,nil,true,true,false,true,1,true)
 							SetTimeout(500,function()
-								SetVehicleDoorOpen(selfVan,2,false,false)
-								SetVehicleDoorOpen(selfVan,3,false,false)
-								SetVehicleDoorOpen(selfVan,5,false,false)
+								SetVehicleDoorOpen(workVan,2,false,false)
+								SetVehicleDoorOpen(workVan,3,false,false)
+								SetVehicleDoorOpen(workVan,5,false,false)
 							end)
 						else
 							TriggerEvent("Notify","aviso","Sua van esta cheia")
@@ -328,33 +328,33 @@ AddEventHandler("vrp_postal:service",function(data)
 				end			
 			end
 			
-			if GetVehiclePedIsIn(ped, false) == selfVan then
-				drawTx("Sua Van Possui: "..caixas.." Correspondencias",4,0.9,0.93,0.50,255,255,255,180)
-				local estDis = GetDistanceBetweenCoords(GetEntityCoords(ped),mission[MissionID].estacionar.x,mission[MissionID].estacionar.y,mission[MissionID].estacionar.z,true)
-				if estDis <= 15 and not pegarEncomenda and not entregando then
-					DrawMarker(21, mission[MissionID].estacionar.x,mission[MissionID].estacionar.y,mission[MissionID].estacionar.z, 0, 0, 0, 180.0, 0, 0, 0.4, 0.4, 0.4, 207, 158, 25, 150, 0, 0, 0, 1)
+			if GetVehiclePedIsIn(ped, false) == workVan then
+				drawTx("Sua Van Possui: "..boxes.." Correspondencias",4,0.9,0.93,0.50,255,255,255,180)
+				local estDis = GetDistanceBetweenCoords(GetEntityCoords(ped),mission[MissionID].parkingSpot.x,mission[MissionID].parkingSpot.y,mission[MissionID].parkingSpot.z,true)
+				if estDis <= 15 and not takeMail and not delivering then
+					DrawMarker(21, mission[MissionID].parkingSpot.x,mission[MissionID].parkingSpot.y,mission[MissionID].parkingSpot.z, 0, 0, 0, 180.0, 0, 0, 0.4, 0.4, 0.4, 207, 158, 25, 150, 0, 0, 0, 1)
 				end
 
-				if estDis <= 4 and not pegarEncomenda and not entregando then
+				if estDis <= 4 and not takeMail and not delivering then
 
                     DisplayHelpText("Pressione ~INPUT_PICKUP~ para estacionar van")
                     if IsControlJustPressed(1,38) then
-						if caixas < 1 then
+						if boxes < 1 then
 							TriggerEvent("Notify","aviso","Você não possui correspondencias para efetuar esta entrega")
 						else		
 							FreezeEntityPosition(GetVehiclePedIsIn(ped, false),true)
 							TaskLeaveVehicle(ped, GetVehiclePedIsIn(ped, false), 0)  
 							SetTimeout(1000,function()
-								SetVehicleDoorOpen(selfVan,2,false,false)
-								SetVehicleDoorOpen(selfVan,3,false,false)
-								SetVehicleDoorOpen(selfVan,5,false,false)
+								SetVehicleDoorOpen(workVan,2,false,false)
+								SetVehicleDoorOpen(workVan,3,false,false)
+								SetVehicleDoorOpen(workVan,5,false,false)
 							end)
-							pegarEncomenda = true
+							takeMail = true
 							RemoveBlip(blip)
-							CriarBlip(mission[MissionID].coords.x,mission[MissionID].coords.y,mission[MissionID].coords.z,"Entrega de Correspondencia")
-							if mission[MissionID].type == "pacote" then
+							CreateBlip(mission[MissionID].coords.x,mission[MissionID].coords.y,mission[MissionID].coords.z,"Entrega de Correspondencia")
+							if mission[MissionID].type == "package" then
 							 	TriggerEvent("Notify","importante","Pegue o pacote na van e o entregue no local demarcado")
-							elseif mission[MissionID].type == "carta" then
+							elseif mission[MissionID].type == "letter" then
 								TriggerEvent("Notify","importante","Pegue a carta na van e o entregue na caixa de correio")
 							end
 
@@ -363,12 +363,12 @@ AddEventHandler("vrp_postal:service",function(data)
                 end
 			end
 
-				if pegarEncomenda then
-					local distance2 = #(GetEntityCoords(ped) - GetWorldPositionOfEntityBone(selfVan,GetEntityBoneIndexByName(selfVan,"door_dside_r")))
-					local xa,ya,za = table.unpack(GetWorldPositionOfEntityBone(selfVan,GetEntityBoneIndexByName(selfVan,"door_dside_r")))
+				if takeMail then
+					local distance2 = #(GetEntityCoords(ped) - GetWorldPositionOfEntityBone(workVan,GetEntityBoneIndexByName(workVan,"door_dside_r")))
+					local xa,ya,za = table.unpack(GetWorldPositionOfEntityBone(workVan,GetEntityBoneIndexByName(workVan,"door_dside_r")))
 
-					local distance2 = #(GetEntityCoords(ped) - GetWorldPositionOfEntityBone(selfVan,GetEntityBoneIndexByName(selfVan,"door_pside_r")))
-					local xb,yb,zb = table.unpack(GetWorldPositionOfEntityBone(selfVan,GetEntityBoneIndexByName(selfVan,"door_pside_r")))
+					local distance2 = #(GetEntityCoords(ped) - GetWorldPositionOfEntityBone(workVan,GetEntityBoneIndexByName(workVan,"door_pside_r")))
+					local xb,yb,zb = table.unpack(GetWorldPositionOfEntityBone(workVan,GetEntityBoneIndexByName(workVan,"door_pside_r")))
 
 					local x = (xa+xb)/2
 					local y = (ya+yb)/2
@@ -380,42 +380,43 @@ AddEventHandler("vrp_postal:service",function(data)
 						DisplayHelpText("Pressione ~INPUT_PICKUP~ para pegar correspondencia")
 						if IsControlJustPressed(1,38) then
 
-							if mission[MissionID].type == "pacote" then
+							-- check the type of mail to play carryAnim
+							if mission[MissionID].type == "package" then
 								TaskPlayAnim(PlayerPedId(-1), 'anim@heists@box_carry@', 'idle', 1.0, -1.0,-1,50,0,0, 0,0)
 								local coords = GetOffsetFromEntityInWorldCoords(ped,0.0,0.0,-5.0)
-								caixaProp = CreateObject(GetHashKey("prop_cs_cardbox_01"),coords.x,coords.y,coords.z,true,true,true)
-								SetEntityCollision(caixaProp,false,false)
-								AttachEntityToEntity(caixaProp,ped,GetPedBoneIndex(ped,28422),nil,nil,nil,nil,nil,nil,true,true,false,true,1,true)
-								entregando = true
-								pegarEncomenda = false
+								boxProp = CreateObject(GetHashKey("prop_cs_cardbox_01"),coords.x,coords.y,coords.z,true,true,true)
+								SetEntityCollision(boxProp,false,false)
+								AttachEntityToEntity(boxProp,ped,GetPedBoneIndex(ped,28422),nil,nil,nil,nil,nil,nil,true,true,false,true,1,true)
+								delivering = true
+								takeMail = false
 								SetTimeout(2000,function()
-									SetVehicleDoorShut(selfVan,2,false)
-									SetVehicleDoorShut(selfVan,3,false)
-									SetVehicleDoorShut(selfVan,5,false)
+									SetVehicleDoorShut(workVan,2,false)
+									SetVehicleDoorShut(workVan,3,false)
+									SetVehicleDoorShut(workVan,5,false)
 								end)
-							elseif mission[MissionID].type == "carta" then
+							elseif mission[MissionID].type == "letter" then
 								RequestAnimDict("mp_common")
     							while (not HasAnimDictLoaded("mp_common")) do Citizen.Wait(0) end
 								TaskPlayAnim(PlayerPedId(), "mp_common", "givetake1_a", 3.5, -8, -1, 2, 0, 0, 0, 0, 0)
 								Wait(1500)
 								ClearPedTasksImmediately(PlayerPedId())
-								entregando = true
-								pegarEncomenda = false
+								delivering = true
+								takeMail = false
 								SetTimeout(2000,function()
-									SetVehicleDoorShut(selfVan,2,false)
-									SetVehicleDoorShut(selfVan,3,false)
-									SetVehicleDoorShut(selfVan,5,false)
+									SetVehicleDoorShut(workVan,2,false)
+									SetVehicleDoorShut(workVan,3,false)
+									SetVehicleDoorShut(workVan,5,false)
 								end)
 							end
 						end		
 					end
 				end
 
-				if entregando then
+				if delivering then
 					local entregaDis = GetDistanceBetweenCoords(GetEntityCoords(ped),mission[MissionID].coords.x,mission[MissionID].coords.y,mission[MissionID].coords.z,true)
 
-
-					if mission[MissionID].type == "pacote" then
+					-- Check type of mail for delivery style
+					if mission[MissionID].type == "package" then
 						if entregaDis <= 15 then
 							DrawMarker(21, mission[MissionID].coords.x,mission[MissionID].coords.y,mission[MissionID].coords.z, 0, 0, 0, 180.0, 0, 0, 0.4, 0.4, 0.4, 207, 158, 25, 150, 0, 0, 0, 1)
 							if entregaDis <= 2 then
@@ -425,30 +426,30 @@ AddEventHandler("vrp_postal:service",function(data)
 									FreezeEntityPosition(ped,true)
 									TriggerEvent("progress",5000,"Entregando Pacote")
 									Citizen.Wait(5000)
-									TriggerServerEvent("trydeleteobj",ObjToNet(caixaProp))
+									TriggerServerEvent("trydeleteobj",ObjToNet(boxProp))
 									ClearPedTasks(ped)
-									caixaProp = nil
+									boxProp = nil
 									local postalBox = CreateObject(GetHashKey('prop_cs_cardbox_01'), mission[MissionID].coords.x,mission[MissionID].coords.y,mission[MissionID].coords.z, 0, 0, 1)
 									PlaceObjectOnGroundProperly(postalBox)
 									FreezeEntityPosition(postalBox,true)
 									FreezeEntityPosition(ped,false)
 									TriggerEvent("cancelando",false)
 									TriggerEvent("Notify","sucesso","Correspondencia entregue")
-									entregando = false
+									delivering = false
 									SetTimeout(30000,function()
 										DeleteObject(postalBox)
 									end)
-									FreezeEntityPosition(selfVan,false)
-									caixas = caixas - 1
-									self.remote.FinalizaMissao(mission[MissionID])
+									FreezeEntityPosition(workVan,false)
+									boxes = boxes - 1
+									self.remote.FinishMission(mission[MissionID])
 									while true do
 										Citizen.Wait(10)
-										if destinoantigo == MissionID then
+										if lastDeliveryID == MissionID then
 											MissionID = math.random(1,#mission)
 										else
 											RemoveBlip(blip)
-											CriarBlip(mission[MissionID].estacionar.x,mission[MissionID].estacionar.y,mission[MissionID].estacionar.z,"Entrega de Correspondencia")
-											destinoantigo = MissionID
+											CreateBlip(mission[MissionID].parkingSpot.x,mission[MissionID].parkingSpot.y,mission[MissionID].parkingSpot.z,"Entrega de Correspondencia")
+											lastDeliveryID = MissionID
 											Citizen.Wait(1000)
 											break
 										end
@@ -457,7 +458,7 @@ AddEventHandler("vrp_postal:service",function(data)
 								end
 							end
 						end
-					elseif mission[MissionID].type == "carta" then
+					elseif mission[MissionID].type == "letter" then
 						if entregaDis <= 10 then
 							DrawMarker(21, mission[MissionID].coords.x,mission[MissionID].coords.y,mission[MissionID].coords.z, 0, 0, 0, 180.0, 0, 0, 0.4, 0.4, 0.4, 207, 158, 25, 150, 0, 0, 0, 1)
 							if entregaDis <= 1 then
@@ -470,18 +471,18 @@ AddEventHandler("vrp_postal:service",function(data)
 									Citizen.Wait(1000)
 									TriggerEvent("Notify","sucesso","Correspondencia entregue")
 									TriggerEvent("cancelando",false)
-									entregando = false
-									FreezeEntityPosition(selfVan,false)
-									caixas = caixas - 1
-									self.remote.FinalizaMissao(mission[MissionID])
+									delivering = false
+									FreezeEntityPosition(workVan,false)
+									boxes = boxes - 1
+									self.remote.FinishMission(mission[MissionID])
 									while true do
 										Citizen.Wait(10)
-										if destinoantigo == MissionID then
+										if lastDeliveryID == MissionID then
 											MissionID = math.random(1,#mission)
 										else
 											RemoveBlip(blip)
-											CriarBlip(mission[MissionID].estacionar.x,mission[MissionID].estacionar.y,mission[MissionID].estacionar.z,"Entrega de Correspondencia")
-											destinoantigo = MissionID
+											CreateBlip(mission[MissionID].parkingSpot.x,mission[MissionID].parkingSpot.y,mission[MissionID].parkingSpot.z,"Entrega de Correspondencia")
+											lastDeliveryID = MissionID
 											Citizen.Wait(1000)
 											break
 										end
@@ -494,9 +495,9 @@ AddEventHandler("vrp_postal:service",function(data)
 
 				end
 
-			if carregandoCaixa then
+			if carryingBox then
 
-				-- carregar caixa anim
+				-- carrying box anim
 				if not IsEntityPlayingAnim(ped, 'anim@heists@box_carry@', 'idle', 3) then
 					if not HasAnimDictLoaded("anim@heists@box_carry@") then
 						RequestAnimDict("anim@heists@box_carry@")
@@ -507,11 +508,11 @@ AddEventHandler("vrp_postal:service",function(data)
 					TaskPlayAnim(PlayerPedId(-1), 'anim@heists@box_carry@', 'idle', 1.0, -1.0,-1,50,0,0, 0,0)
 				end
 
-				local distance2 = #(GetEntityCoords(ped) - GetWorldPositionOfEntityBone(selfVan,GetEntityBoneIndexByName(selfVan,"door_dside_r")))
-				local xa,ya,za = table.unpack(GetWorldPositionOfEntityBone(selfVan,GetEntityBoneIndexByName(selfVan,"door_dside_r")))
+				local distance2 = #(GetEntityCoords(ped) - GetWorldPositionOfEntityBone(workVan,GetEntityBoneIndexByName(workVan,"door_dside_r")))
+				local xa,ya,za = table.unpack(GetWorldPositionOfEntityBone(workVan,GetEntityBoneIndexByName(workVan,"door_dside_r")))
 
-				local distance2 = #(GetEntityCoords(ped) - GetWorldPositionOfEntityBone(selfVan,GetEntityBoneIndexByName(selfVan,"door_pside_r")))
-				local xb,yb,zb = table.unpack(GetWorldPositionOfEntityBone(selfVan,GetEntityBoneIndexByName(selfVan,"door_pside_r")))
+				local distance2 = #(GetEntityCoords(ped) - GetWorldPositionOfEntityBone(workVan,GetEntityBoneIndexByName(workVan,"door_pside_r")))
+				local xb,yb,zb = table.unpack(GetWorldPositionOfEntityBone(workVan,GetEntityBoneIndexByName(workVan,"door_pside_r")))
 
 				local x = (xa+xb)/2
 				local y = (ya+yb)/2
@@ -522,15 +523,15 @@ AddEventHandler("vrp_postal:service",function(data)
 				if distance <= 1.5  then
 					DisplayHelpText("Pressione ~INPUT_PICKUP~ para colocar correspondencia")
 					if IsControlJustPressed(1,38) then
-						caixas = caixas + 1
-						carregandoCaixa = false
-						TriggerServerEvent("trydeleteobj",ObjToNet(caixaProp))
-                        caixaProp = nil
+						boxes = boxes + 1
+						carryingBox = false
+						TriggerServerEvent("trydeleteobj",ObjToNet(boxProp))
+                        boxProp = nil
 						ClearPedTasks(ped)
 						SetTimeout(600,function()
-							SetVehicleDoorShut(selfVan,2,false)
-							SetVehicleDoorShut(selfVan,3,false)
-							SetVehicleDoorShut(selfVan,5,false)
+							SetVehicleDoorShut(workVan,2,false)
+							SetVehicleDoorShut(workVan,3,false)
+							SetVehicleDoorShut(workVan,5,false)
 						end)
 					end
 				end				
@@ -538,8 +539,8 @@ AddEventHandler("vrp_postal:service",function(data)
 
 
 		end
-		destinoantigo = nil
-		TriggerServerEvent("trydeleteobj",ObjToNet(caixaProp))
+		lastDeliveryID = nil
+		TriggerServerEvent("trydeleteobj",ObjToNet(boxProp))
 		ClearPedTasks(ped)
 	end
 end)
@@ -547,48 +548,48 @@ end)
 end
 
 
-RegisterNetEvent("vrp_postal:pagamentoAnim")
-AddEventHandler("vrp_postal:pagamentoAnim",function()
+RegisterNetEvent("vrp_postal:payoutAnim")
+AddEventHandler("vrp_postal:payoutAnim",function()
     RequestAnimDict("mp_common")
     while (not HasAnimDictLoaded("mp_common")) do Citizen.Wait(0) end
     TaskPlayAnim(PlayerPedId(), "mp_common", "givetake1_a", 3.5, -8, -1, 2, 0, 0, 0, 0, 0)
-    TaskPlayAnim(peds[centralAtual], "mp_common", "givetake1_a", 3.5, -8, -1, 2, 0, 0, 0, 0, 0)
+    TaskPlayAnim(peds[currentOffice], "mp_common", "givetake1_a", 3.5, -8, -1, 2, 0, 0, 0, 0, 0)
     Wait(1500)
     ClearPedTasksImmediately(PlayerPedId())
-    ClearPedTasksImmediately(peds[centralAtual])
+    ClearPedTasksImmediately(peds[currentOffice])
 end)
 
 
 RegisterNetEvent('vrp_postal:spawnvan')
 AddEventHandler('vrp_postal:spawnvan',function(data)
 
-	if data.central ~= centralAtual then
+	if data.office ~= currentOffice then
 		TriggerEvent("Notify","aviso","Você não foi contratado por esta central")
 		return
 	end
 
-	local mhash = GetHashKey(Centrais[centralAtual].van)
+	local mhash = GetHashKey(Offices[currentOffice].van)
 	while not HasModelLoaded(mhash) do
 		RequestModel(mhash)
 		Citizen.Wait(10)
 	end
-	local gx,gy,gz,gh = table.unpack(Centrais[centralAtual].garage)
+	local gx,gy,gz,gh = table.unpack(Offices[currentOffice].garage)
 
     if not IsAnyVehicleNearPoint(gx,gy,gz,3.0) then
 
         if HasModelLoaded(mhash) then
             local ped = PlayerPedId()
-            selfVan = CreateVehicle(mhash,gx,gy,gz,gh,true,false)
-            SetVehicleIsStolen(selfVan,false)
-            SetVehicleOnGroundProperly(selfVan)
-            SetEntityInvincible(selfVan,false)
-            Citizen.InvokeNative(0xAD738C3085FE7E11,selfVan,true,true)
-            SetVehicleHasBeenOwnedByPlayer(selfVan,true)
-            SetVehicleDirtLevel(selfVan,0.0)
-            SetVehRadioStation(selfVan,"OFF")
-            SetVehicleDoorsLocked(selfVan,1)
-            SetVehicleDoorsLockedForAllPlayers(selfVan,false)
-            SetVehicleDoorsLockedForPlayer(selfVan,PlayerId(),false)
+            workVan = CreateVehicle(mhash,gx,gy,gz,gh,true,false)
+            SetVehicleIsStolen(workVan,false)
+            SetVehicleOnGroundProperly(workVan)
+            SetEntityInvincible(workVan,false)
+            Citizen.InvokeNative(0xAD738C3085FE7E11,workVan,true,true)
+            SetVehicleHasBeenOwnedByPlayer(workVan,true)
+            SetVehicleDirtLevel(workVan,0.0)
+            SetVehRadioStation(workVan,"OFF")
+            SetVehicleDoorsLocked(workVan,1)
+            SetVehicleDoorsLockedForAllPlayers(workVan,false)
+            SetVehicleDoorsLockedForPlayer(workVan,PlayerId(),false)
             SetVehicleEngineOn(GetVehiclePedIsIn(ped,false),true)
             SetModelAsNoLongerNeeded(mhash)
             
@@ -605,7 +606,7 @@ function DisplayHelpText(str)
 	DisplayHelpTextFromStringLabel(0,0,1,-1)
 end
 
-function CriarBlip(x,y,z,text)
+function CreateBlip(x,y,z,text)
 	blip = AddBlipForCoord(x,y,z)
 	SetBlipSprite(blip,1)
 	SetBlipColour(blip,5)
@@ -628,16 +629,16 @@ function drawTx(text,font,x,y,scale,r,g,b,a)
 	DrawText(x,y)
 end
 
-function CriarEstoqueBlip(x,y,z)
-	estoqueBlip = AddBlipForCoord(x,y,z)
-	SetBlipSprite(estoqueBlip,478)
-	SetBlipColour(estoqueBlip,3)
-	SetBlipScale(estoqueBlip,0.6)
-	SetBlipAsShortRange(estoqueBlip,true)
-	SetBlipRoute(estoqueBlip,false)
+function CreateOfficeBlip(x,y,z)
+	officeBlip = AddBlipForCoord(x,y,z)
+	SetBlipSprite(officeBlip,478)
+	SetBlipColour(officeBlip,3)
+	SetBlipScale(officeBlip,0.6)
+	SetBlipAsShortRange(officeBlip,true)
+	SetBlipRoute(officeBlip,false)
 	BeginTextCommandSetBlipName("STRING")
-	AddTextComponentString("Estoque Correio")
-	EndTextCommandSetBlipName(estoqueBlip)
+	AddTextComponentString("Central Correio")
+	EndTextCommandSetBlipName(officeBlip)
 end
 
 

@@ -5,45 +5,45 @@ function vrp_postal:__construct()
 	vRP.Extension.__construct(self)
 end
 
-local pagamentos = {}
+local payments = {}
 
 vrp_postal.tunnel = {}
 
-function vrp_postal.tunnel:FinalizaMissao(mission)
+function vrp_postal.tunnel:FinishMission(mission)
     local source = source
     local user = vRP.users_by_source[source]
-    if pagamentos[user.cid] then 
-        pagamentos[user.cid] = pagamentos[user.cid] + mission.pay 
+    if payments[user.cid] then 
+        payments[user.cid] = payments[user.cid] + mission.pay 
     else
-        pagamentos[user.cid] = mission.pay 
+        payments[user.cid] = mission.pay 
     end
 end
 
-function vrp_postal.tunnel:getPagamento()
+function vrp_postal.tunnel:getPayment()
     local source = source
     local user = vRP.users_by_source[source]
-    if pagamentos[user.cid] and pagamentos[user.cid] > 0 then 
-        return pagamentos[user.cid]
+    if payments[user.cid] and payments[user.cid] > 0 then 
+        return payments[user.cid]
     else
         return 0
     end
 end
 
-function vrp_postal.tunnel:ReceberPagamento()
+function vrp_postal.tunnel:ReceivePayout()
     local source = source
     local user = vRP.users_by_source[source]
-    if pagamentos[user.cid] and pagamentos[user.cid] > 0 then 
-        user:giveWallet(pagamentos[user.cid])
-        TriggerClientEvent("Notify",user.source,"importante","Você recebeu <b>$"..pagamentos[user.cid].."</b> pela entrega de correpondencias")
-        pagamentos[user.cid] = nil
-        TriggerClientEvent("vrp_postal:pagamentoAnim",user.source)
+    if payments[user.cid] and payments[user.cid] > 0 then 
+        user:giveWallet(payments[user.cid])
+        TriggerClientEvent("Notify",user.source,"importante","Você recebeu <b>$"..payments[user.cid].."</b> pela entrega de correpondencias")
+        payments[user.cid] = nil
+        TriggerClientEvent("vrp_postal:payoutAnim",user.source)
     else
         TriggerClientEvent("Notify",user.source,"negado","Você não tem dinheiro a receber por nenhuma entrega")
     end
 end
 
-RegisterServerEvent("vrp_postal:Uniforme")
-AddEventHandler("vrp_postal:Uniforme",function(value,sex)
+RegisterServerEvent("vrp_postal:Uniform")
+AddEventHandler("vrp_postal:Uniform",function(value,sex)
     local source = source
     local user = vRP.users_by_source[source]
     if not sex or not value then
