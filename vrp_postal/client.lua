@@ -413,13 +413,13 @@ AddEventHandler("vrp_postal:workMission",function(data)
 				end
 
 				if delivering then
-					local entregaDis = GetDistanceBetweenCoords(GetEntityCoords(ped),mission[MissionID].coords.x,mission[MissionID].coords.y,mission[MissionID].coords.z,true)
+					local deliveryDis = GetDistanceBetweenCoords(GetEntityCoords(ped),mission[MissionID].coords.x,mission[MissionID].coords.y,mission[MissionID].coords.z,true)
 
 					-- Check type of mail for delivery style
 					if mission[MissionID].type == "package" then
-						if entregaDis <= 15 then
+						if deliveryDis <= 15 then
 							DrawMarker(21, mission[MissionID].coords.x,mission[MissionID].coords.y,mission[MissionID].coords.z, 0, 0, 0, 180.0, 0, 0, 0.4, 0.4, 0.4, 207, 158, 25, 150, 0, 0, 0, 1)
-							if entregaDis <= 2 then
+							if deliveryDis <= 2 then
 								DisplayHelpText("Pressione ~INPUT_PICKUP~ entregar correspondencia")
 								if IsControlJustPressed(1,38) then
 									TriggerEvent("cancelando",true)
@@ -459,9 +459,9 @@ AddEventHandler("vrp_postal:workMission",function(data)
 							end
 						end
 					elseif mission[MissionID].type == "letter" then
-						if entregaDis <= 10 then
+						if deliveryDis <= 10 then
 							DrawMarker(21, mission[MissionID].coords.x,mission[MissionID].coords.y,mission[MissionID].coords.z, 0, 0, 0, 180.0, 0, 0, 0.4, 0.4, 0.4, 207, 158, 25, 150, 0, 0, 0, 1)
-							if entregaDis <= 1 then
+							if deliveryDis <= 1 then
 								DisplayHelpText("Pressione ~INPUT_PICKUP~ para entregar correspondencia")
 								if IsControlJustPressed(1,38) then
 									TriggerEvent("cancelando",true)
